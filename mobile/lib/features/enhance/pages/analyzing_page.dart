@@ -100,8 +100,7 @@ class _AnalyzingPageState extends ConsumerState<AnalyzingPage> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: ListView(
             children: [
               if (File(imagePath).existsSync())
                 Container(
@@ -182,7 +181,7 @@ class _AnalyzingPageState extends ConsumerState<AnalyzingPage> {
                   ],
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 22),
               Text(
                 '正在安全处理，不会修改手机里的原图。',
                 style: textTheme.bodyMedium?.copyWith(
