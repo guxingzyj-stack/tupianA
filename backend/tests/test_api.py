@@ -58,6 +58,13 @@ def test_health_does_not_require_token(monkeypatch, tmp_path):
     assert response.json()["status"] == "ok"
 
 
+def test_root_health_does_not_require_token(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
 def test_analyze_requires_token(monkeypatch, tmp_path):
     client = _client(monkeypatch, tmp_path)
     response = client.post("/api/analyze", json={"device_id": "d1", "image": _image_b64()})

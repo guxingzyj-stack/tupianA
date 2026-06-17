@@ -61,6 +61,11 @@ def create_app() -> FastAPI:
     app.include_router(video.router, prefix="/api")
     app.include_router(template.router, prefix="/api")
     app.include_router(device.router, prefix="/api")
+
+    @app.get("/")
+    async def root_health_check() -> dict[str, str]:
+        return {"status": "ok", "version": settings.app_version}
+
     return app
 
 
