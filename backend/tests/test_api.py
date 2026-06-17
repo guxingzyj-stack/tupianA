@@ -130,7 +130,7 @@ def test_enhance_uses_remote_image_edit_when_configured(monkeypatch, tmp_path):
         json={
             "relay_base_url": "https://relay.example.com/v1",
             "relay_api_key": "secret-key",
-            "image_edit_model": "gpt-image-1.5",
+            "image_edit_model": "gpt-image-2",
         },
         headers=headers,
     )
@@ -230,7 +230,7 @@ def test_device_config_api_masks_relay_key(monkeypatch, tmp_path):
             "relay_base_url": "https://relay.example.com/v1",
             "relay_api_key": "secret-key",
             "ai_model": "claude-sonnet-4-6",
-            "image_edit_model": "gpt-image-1.5",
+            "image_edit_model": "gpt-image-2",
         },
         headers=headers,
     )
@@ -250,7 +250,7 @@ def test_device_config_api_masks_relay_key(monkeypatch, tmp_path):
     assert read.status_code == 200
     assert read.json()["has_relay_api_key"] is True
     assert read.json()["wechat_app_id"] == "wx123"
-    assert read.json()["image_edit_model"] == "gpt-image-1.5"
+    assert read.json()["image_edit_model"] == "gpt-image-2"
     assert "relay_api_key" not in read.json()
 
     partial = client.put(
@@ -266,7 +266,7 @@ def test_device_config_api_masks_relay_key(monkeypatch, tmp_path):
     assert partial_body["wechat_universal_link"] == "https://example.com/wechat/"
     assert partial_body["relay_base_url"] == "https://relay.example.com/v1"
     assert partial_body["ai_model"] == "claude-sonnet-4-6"
-    assert partial_body["image_edit_model"] == "gpt-image-1.5"
+    assert partial_body["image_edit_model"] == "gpt-image-2"
     assert partial_body["has_relay_api_key"] is True
 
 

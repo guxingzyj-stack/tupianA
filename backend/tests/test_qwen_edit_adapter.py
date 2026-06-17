@@ -58,7 +58,7 @@ async def test_qwen_edit_adapter_calls_image_edit_api_and_saves_jpeg(monkeypatch
     adapter = QwenEditAdapter(
         relay_base_url="https://relay.example.com/v1",
         relay_api_key="secret",
-        image_edit_model="gpt-image-1.5",
+        image_edit_model="gpt-image-2",
     )
 
     result = await adapter.restore(source, target, instruction="自然修复老照片")
@@ -69,7 +69,7 @@ async def test_qwen_edit_adapter_calls_image_edit_api_and_saves_jpeg(monkeypatch
         assert image.mode == "RGB"
         assert image.size == (32, 24)
     assert _FakeAsyncClient.last_request["path"] == "/images/edits"
-    assert _FakeAsyncClient.last_request["data"]["model"] == "gpt-image-1.5"
+    assert _FakeAsyncClient.last_request["data"]["model"] == "gpt-image-2"
     assert "自然修复老照片" in _FakeAsyncClient.last_request["data"]["prompt"]
     assert _FakeAsyncClient.last_request["headers"]["Authorization"] == "Bearer secret"
 
