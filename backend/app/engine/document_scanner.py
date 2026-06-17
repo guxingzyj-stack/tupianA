@@ -16,7 +16,7 @@ def correct_paper_photo(
 
     source = Path(input_path)
     target = Path(output_path)
-    image = cv2.imread(str(source))
+    image = _read_image(cv2, source)
     if image is None:
         return source, False
 
@@ -29,20 +29,10 @@ def correct_paper_photo(
     edges = cv2.Canny(gray, 55, 160)
     edges = cv2.dilate(edges, np.ones((3, 3), np.uint8), iterations=1)
 
-    contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:8]
-
-    page = None
     image_area = resized.shape[0] * resized.shape[1]
-    for contour in contours:
-        perimeter = cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
-        if len(approx) != 4:
-            continue
-        if cv2.contourArea(approx) < image_area * 0.20:
-            continue
-        page = approx.reshape(4, 2).astype("float32")
-        break
+    page = _find_page_from_edges(cv2, edges, image_area)
+    if page is None:
+        page = _find_page_from_light_region(cv2, gray, image_area)
 
     if page is None:
         return source, False
@@ -71,10 +61,58 @@ def correct_paper_photo(
     warped = cv2.warpPerspective(original, matrix, (max_width, max_height))
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    ok = cv2.imwrite(str(target), warped, [int(cv2.IMWRITE_JPEG_QUALITY), 94])
+    ok = _write_jpeg(cv2, target, warped, quality=94)
     if not ok:
         return source, False
     return target, True
+
+
+def _read_image(cv2, path: Path) -> np.ndarray | None:
+    try:
+        data = np.fromfile(path, dtype=np.uint8)
+    except OSError:
+        return None
+    if data.size == 0:
+        return None
+    return cv2.imdecode(data, cv2.IMREAD_COLOR)
+
+
+def _write_jpeg(cv2, path: Path, image: np.ndarray, *, quality: int) -> bool:
+    ok, encoded = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+    if not ok:
+        return False
+    try:
+        encoded.tofile(path)
+    except OSError:
+        return False
+    return True
+
+
+def _find_page_from_edges(cv2, edges: np.ndarray, image_area: int) -> np.ndarray | None:
+    contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:8]
+    return _find_page_quad(cv2, contours, image_area)
+
+
+def _find_page_from_light_region(cv2, gray: np.ndarray, image_area: int) -> np.ndarray | None:
+    _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
+    return _find_page_quad(cv2, contours, image_area)
+
+
+def _find_page_quad(cv2, contours: list[np.ndarray], image_area: int) -> np.ndarray | None:
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < image_area * 0.20 or area > image_area * 0.90:
+            continue
+        perimeter = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, 0.03 * perimeter, True)
+        if len(approx) == 4:
+            return approx.reshape(4, 2).astype("float32")
+    return None
 
 
 def _order_points(points: np.ndarray) -> np.ndarray:
@@ -86,4 +124,3 @@ def _order_points(points: np.ndarray) -> np.ndarray:
     rect[1] = points[np.argmin(diffs)]
     rect[3] = points[np.argmax(diffs)]
     return rect
-
