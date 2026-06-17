@@ -1,0 +1,14 @@
+{
+    "app":  "Lao Zhao",
+    "package":  "com.family.photorescue.lao_zhao",
+    "version":  "0.1.0+1",
+    "build_mode":  "release",
+    "backend_url":  "https://tupiana.zeabur.app",
+    "app_token_configured":  true,
+    "placeholder_allowed":  false,
+    "signing":  "dedicated release keystore",
+    "apk":  "lao-zhao-0.1.0-release.apk",
+    "apk_bytes":  61049639,
+    "sha256":  "fc376dbdbabea2734dc78bf3d8dcaa616004b60311d6ecc1e05e96130e8ac9f0",
+    "built_at":  "2026-06-17T05:57:51.7022639Z"
+}
