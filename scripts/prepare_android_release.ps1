@@ -63,7 +63,8 @@ if (-not $SkipBackendVerify) {
             "-File", "scripts/verify_deployment.ps1",
             "-BaseUrl", $BaseUrl,
             "-AppToken", $AppToken,
-            "-Python", $Python
+            "-Python", $Python,
+            "-EvidencePath", "deployment_evidence_android_release.json"
         )
         Invoke-CheckedPowerShell -Arguments $verifyDeployArgs -SecretValues @($AppToken)
     }
