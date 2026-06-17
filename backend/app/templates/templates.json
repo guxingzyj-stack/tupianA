@@ -1,0 +1,196 @@
+{
+  "categories": [
+    {
+      "id": "festival",
+      "name": "节日祝福",
+      "templates": [
+        {
+          "id": "spring_new_year",
+          "name": "新年快乐",
+          "motion": "slow_zoom",
+          "tone": "warm",
+          "text_presets": ["新年快乐 阖家幸福", "新春如意 平安喜乐", "福到家门 万事顺心"]
+        },
+        {
+          "id": "midautumn_reunion",
+          "name": "中秋团圆",
+          "motion": "slow_zoom",
+          "tone": "moon",
+          "text_presets": ["中秋快乐 阖家团圆", "明月寄相思 团圆庆中秋", "千里共婵娟"]
+        },
+        {
+          "id": "dragon_boat",
+          "name": "端午安康",
+          "motion": "env_breeze",
+          "tone": "green",
+          "text_presets": ["端午安康 幸福常在", "粽香情浓 平安喜乐", "岁岁安康"]
+        },
+        {
+          "id": "double_ninth",
+          "name": "重阳敬老",
+          "motion": "slow_zoom",
+          "tone": "warm",
+          "text_presets": ["重阳安康 福寿绵长", "登高望远 岁岁平安", "健康长寿 笑口常开"]
+        },
+        {
+          "id": "lantern_festival",
+          "name": "元宵喜乐",
+          "motion": "slow_zoom",
+          "tone": "red",
+          "text_presets": ["元宵快乐 团团圆圆", "花灯映福 喜乐安康", "月圆人圆 事事圆满"]
+        },
+        {
+          "id": "national_day",
+          "name": "国庆同乐",
+          "motion": "env_breeze",
+          "tone": "red",
+          "text_presets": ["国庆快乐 家国同庆", "山河锦绣 幸福安康", "祖国繁荣 日子红火"]
+        }
+      ]
+    },
+    {
+      "id": "birthday",
+      "name": "生日",
+      "templates": [
+        {
+          "id": "longevity_mountain",
+          "name": "寿比南山",
+          "motion": "slow_zoom",
+          "tone": "gold",
+          "text_presets": ["寿比南山 福如东海", "健康长寿 天天开心", "福寿安康 笑口常开"]
+        },
+        {
+          "id": "east_sea",
+          "name": "福如东海",
+          "motion": "env_breeze",
+          "tone": "blue",
+          "text_presets": ["福如东海 寿比南山", "平安喜乐 福气满满", "好日子长长久久"]
+        },
+        {
+          "id": "hundred_years",
+          "name": "长命百岁",
+          "motion": "slow_zoom",
+          "tone": "warm",
+          "text_presets": ["长命百岁 身体康健", "岁岁平安 年年如意", "福气满堂 健康常伴"]
+        },
+        {
+          "id": "happy_birthday",
+          "name": "生日快乐",
+          "motion": "slow_zoom",
+          "tone": "pink",
+          "text_presets": ["生日快乐 天天开心", "愿您健康 平安喜乐", "新的一岁 福气满满"]
+        },
+        {
+          "id": "peace_every_year",
+          "name": "岁岁安康",
+          "motion": "env_breeze",
+          "tone": "green",
+          "text_presets": ["岁岁安康 平安顺遂", "一年更比一年好", "健康快乐 常伴身边"]
+        },
+        {
+          "id": "one_year_gift",
+          "name": "一岁一礼",
+          "motion": "slow_zoom",
+          "tone": "gold",
+          "text_presets": ["一岁一礼 一寸欢喜", "愿新岁胜旧岁", "好福气常常在"]
+        }
+      ]
+    },
+    {
+      "id": "motion",
+      "name": "让照片动",
+      "templates": [
+        {
+          "id": "motion_slow_zoom",
+          "name": "缓慢推镜",
+          "motion": "slow_zoom",
+          "tone": "natural",
+          "text_presets": ["美好时刻 留在心里", "这一刻真好", "把好日子留下来"]
+        },
+        {
+          "id": "motion_breeze",
+          "name": "环境微动",
+          "motion": "env_breeze",
+          "tone": "natural",
+          "text_presets": ["风景真美 心情真好", "一路平安 一路风景", "好景常在"]
+        },
+        {
+          "id": "motion_human",
+          "name": "人物轻动",
+          "motion": "subtle_human",
+          "tone": "warm",
+          "text_presets": ["笑容常在 幸福常伴", "家人在一起真好", "平安喜乐"]
+        },
+        {
+          "id": "motion_old_photo",
+          "name": "老照片动",
+          "motion": "slow_zoom",
+          "tone": "nostalgia",
+          "text_presets": ["旧时光 也很暖", "岁月留影 情意长存", "把回忆轻轻留住"]
+        },
+        {
+          "id": "motion_landscape",
+          "name": "风景流动",
+          "motion": "env_breeze",
+          "tone": "blue",
+          "text_presets": ["山水有情 人间值得", "一路好风光", "看见美好"]
+        },
+        {
+          "id": "motion_time",
+          "name": "时光流转",
+          "motion": "slow_zoom",
+          "tone": "nostalgia",
+          "text_presets": ["时光慢一点", "岁月静好 平安相伴", "珍惜每个好日子"]
+        }
+      ]
+    },
+    {
+      "id": "family",
+      "name": "全家福",
+      "templates": [
+        {
+          "id": "family_reunion",
+          "name": "阖家欢乐",
+          "motion": "slow_zoom",
+          "tone": "warm",
+          "text_presets": ["阖家欢乐 幸福安康", "一家人在一起真好", "家和万事兴"]
+        },
+        {
+          "id": "family_festival",
+          "name": "团圆喜庆",
+          "motion": "slow_zoom",
+          "tone": "red",
+          "text_presets": ["团圆喜庆 幸福满满", "好日子 红红火火", "家人相伴 最是温暖"]
+        },
+        {
+          "id": "three_generations",
+          "name": "三世同堂",
+          "motion": "slow_zoom",
+          "tone": "gold",
+          "text_presets": ["三世同堂 福气满满", "儿孙绕膝 幸福安康", "一家和美 福寿绵长"]
+        },
+        {
+          "id": "family_holiday",
+          "name": "共度佳节",
+          "motion": "env_breeze",
+          "tone": "warm",
+          "text_presets": ["共度佳节 阖家团圆", "团团圆圆 平平安安", "佳节快乐 家人安康"]
+        },
+        {
+          "id": "quiet_years",
+          "name": "岁月静好",
+          "motion": "slow_zoom",
+          "tone": "nostalgia",
+          "text_presets": ["岁月静好 家人常伴", "平淡日子 也有光", "愿时光温柔以待"]
+        },
+        {
+          "id": "family_blessing",
+          "name": "福满全家",
+          "motion": "slow_zoom",
+          "tone": "gold",
+          "text_presets": ["福满全家 喜乐安康", "福气进门 好运常在", "一家平安 就是福"]
+        }
+      ]
+    }
+  ]
+}

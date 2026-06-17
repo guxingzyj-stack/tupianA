@@ -1,0 +1,2 @@
+"""Photo rescue backend package."""
+

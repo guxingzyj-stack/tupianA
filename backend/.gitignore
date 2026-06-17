@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+data/
+smoke_output/
+deployment_evidence.json
+deployment_evidence_*.json
+uptime_evidence.json
+uptime_evidence_*.json
+test_images/*
+!test_images/.gitkeep
