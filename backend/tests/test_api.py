@@ -2,7 +2,7 @@ import base64
 from io import BytesIO
 
 from fastapi.testclient import TestClient
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageStat
 
 from app.config import get_settings
 from app.storage.db import get_job
@@ -13,6 +13,19 @@ def _image_b64() -> str:
     buffer = BytesIO()
     image.save(buffer, format="JPEG")
     return base64.b64encode(buffer.getvalue()).decode("ascii")
+
+
+def _image_from_b64(image_b64: str) -> Image.Image:
+    return Image.open(BytesIO(base64.b64decode(image_b64))).convert("RGB")
+
+
+def _image_from_response(content: bytes) -> Image.Image:
+    return Image.open(BytesIO(content)).convert("RGB")
+
+
+def _mean_abs_diff(before: Image.Image, after: Image.Image) -> float:
+    diff = ImageChops.difference(before.convert("RGB"), after.convert("RGB"))
+    return sum(ImageStat.Stat(diff).mean) / 3
 
 
 def _old_photo_b64() -> str:
@@ -54,9 +67,10 @@ def test_analyze_requires_token(monkeypatch, tmp_path):
 def test_analyze_falls_back_without_relay_and_enhance(monkeypatch, tmp_path):
     client = _client(monkeypatch, tmp_path)
     headers = {"X-App-Token": "test-token"}
+    source_b64 = _image_b64()
     analyze = client.post(
         "/api/analyze",
-        json={"device_id": "d1", "image": _image_b64()},
+        json={"device_id": "d1", "image": source_b64},
         headers=headers,
     )
     assert analyze.status_code == 200
@@ -67,6 +81,9 @@ def test_analyze_falls_back_without_relay_and_enhance(monkeypatch, tmp_path):
     base = client.get(body["base_image_url"])
     assert base.status_code == 200
     assert base.headers["content-type"] == "image/jpeg"
+    original_image = _image_from_b64(source_b64)
+    base_image = _image_from_response(base.content)
+    assert _mean_abs_diff(original_image, base_image) > 10
 
     enhance = client.post(
         "/api/enhance",
@@ -80,6 +97,9 @@ def test_analyze_falls_back_without_relay_and_enhance(monkeypatch, tmp_path):
     image = client.get(result["result_image_url"])
     assert image.status_code == 200
     assert image.headers["content-type"] == "image/jpeg"
+    result_image = _image_from_response(image.content)
+    assert _mean_abs_diff(original_image, result_image) > 12
+    assert _mean_abs_diff(base_image, result_image) > 5
 
 
 def test_analyze_accepts_shot_paper_flag(monkeypatch, tmp_path):

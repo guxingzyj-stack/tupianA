@@ -53,36 +53,60 @@ def _load_rgb(path: str | Path) -> Image.Image:
 
 def _repair_old_photo(image: Image.Image, *, keep_black_white: bool) -> Image.Image:
     base = ImageOps.grayscale(image) if keep_black_white else image
-    base = ImageOps.autocontrast(base, cutoff=1)
+    base = ImageOps.autocontrast(base, cutoff=0.5)
     cleaned = base.filter(ImageFilter.MedianFilter(size=3))
-    blended = Image.blend(base.convert("RGB"), cleaned.convert("RGB"), 0.26)
-    blended = ImageEnhance.Contrast(blended).enhance(1.08)
-    return blended.filter(ImageFilter.UnsharpMask(radius=1.2, percent=90, threshold=4))
+    blended = Image.blend(base.convert("RGB"), cleaned.convert("RGB"), 0.34)
+    lifted = _lift_old_photo_shadows(blended, amount=0.16)
+    restored = ImageEnhance.Contrast(lifted).enhance(1.20)
+    restored = ImageEnhance.Brightness(restored).enhance(1.04)
+    return restored.filter(ImageFilter.UnsharpMask(radius=1.1, percent=145, threshold=3))
 
 
 def _colorize_black_white(image: Image.Image) -> Image.Image:
-    gray = ImageOps.autocontrast(ImageOps.grayscale(image), cutoff=1)
+    gray = ImageOps.autocontrast(ImageOps.grayscale(image), cutoff=0.5)
     colorized = ImageOps.colorize(
         gray,
-        black=(34, 30, 28),
-        mid=(156, 125, 92),
-        white=(238, 220, 188),
+        black=(28, 26, 24),
+        mid=(176, 132, 88),
+        white=(248, 226, 190),
     )
-    colorized = ImageEnhance.Color(colorized).enhance(1.10)
-    return colorized.filter(ImageFilter.UnsharpMask(radius=1.1, percent=70, threshold=4))
+    colorized = ImageEnhance.Color(colorized).enhance(1.26)
+    colorized = ImageEnhance.Contrast(colorized).enhance(1.12)
+    return colorized.filter(ImageFilter.UnsharpMask(radius=1.1, percent=110, threshold=4))
 
 
 def _restore_faded_color(image: Image.Image) -> Image.Image:
-    result = ImageOps.autocontrast(image, cutoff=1)
-    result = ImageEnhance.Color(result).enhance(1.22)
-    result = ImageEnhance.Contrast(result).enhance(1.08)
-    return result.filter(ImageFilter.UnsharpMask(radius=1.0, percent=65, threshold=4))
+    result = _gray_world_balance(image, strength=0.55)
+    result = ImageOps.autocontrast(result, cutoff=0.5)
+    result = _lift_old_photo_shadows(result, amount=0.10)
+    result = ImageEnhance.Color(result).enhance(1.42)
+    result = ImageEnhance.Contrast(result).enhance(1.16)
+    return result.filter(ImageFilter.UnsharpMask(radius=1.0, percent=115, threshold=4))
 
 
 def _face_clarity_fallback(image: Image.Image) -> Image.Image:
-    arr = np.asarray(ImageOps.autocontrast(image, cutoff=1)).astype(np.float32) / 255.0
+    balanced = _gray_world_balance(image, strength=0.35)
+    arr = np.asarray(ImageOps.autocontrast(balanced, cutoff=0.5)).astype(np.float32) / 255.0
     luma = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
     shadow = (luma < 0.55)[..., None]
-    arr = np.where(shadow, arr + 0.10 * (1.0 - arr), arr)
+    arr = np.where(shadow, arr + 0.18 * (1.0 - arr), arr)
     lifted = Image.fromarray((np.clip(arr, 0, 1) * 255).astype(np.uint8), mode="RGB")
-    return lifted.filter(ImageFilter.UnsharpMask(radius=1.4, percent=115, threshold=3))
+    lifted = ImageEnhance.Contrast(lifted).enhance(1.10)
+    return lifted.filter(ImageFilter.UnsharpMask(radius=1.3, percent=155, threshold=3))
+
+
+def _gray_world_balance(image: Image.Image, *, strength: float) -> Image.Image:
+    arr = np.asarray(image).astype(np.float32) / 255.0
+    means = arr.reshape(-1, 3).mean(axis=0)
+    gray = float(means.mean())
+    gains = gray / np.maximum(means, 1e-4)
+    gains = 1.0 + (gains - 1.0) * strength
+    return Image.fromarray((np.clip(arr * gains, 0, 1) * 255).astype(np.uint8), mode="RGB")
+
+
+def _lift_old_photo_shadows(image: Image.Image, *, amount: float) -> Image.Image:
+    arr = np.asarray(image).astype(np.float32) / 255.0
+    luma = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
+    shadow_weight = np.clip((0.76 - luma) / 0.76, 0, 1)[..., None]
+    lifted = arr + amount * shadow_weight * (1.0 - arr)
+    return Image.fromarray((np.clip(lifted, 0, 1) * 255).astype(np.uint8), mode="RGB")

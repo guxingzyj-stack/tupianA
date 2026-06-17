@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageStat
 
 from app.engine.old_photo_restore import apply_local_old_photo_restore, is_old_photo_intent
 
@@ -38,3 +38,5 @@ def test_local_old_photo_restore_writes_changed_jpeg(tmp_path):
         assert after.mode == "RGB"
         assert after.size == before.size
         assert ImageChops.difference(before.convert("RGB"), after).getbbox() is not None
+        diff = ImageChops.difference(before.convert("RGB"), after.convert("RGB"))
+        assert sum(ImageStat.Stat(diff).mean) / 3 > 12

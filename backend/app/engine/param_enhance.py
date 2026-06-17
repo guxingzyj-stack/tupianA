@@ -10,10 +10,10 @@ from app.engine.intent_mapper import Operation
 
 def apply_basic_enhancement(image_path: str | Path, output_path: str | Path) -> Path:
     operations = [
-        Operation("brightness", 0.12),
-        Operation("contrast", 0.06),
-        Operation("saturation", 0.06),
-        Operation("clarity", 0.04),
+        Operation("brightness", 0.20),
+        Operation("contrast", 0.12),
+        Operation("saturation", 0.12),
+        Operation("clarity", 0.14),
     ]
     return apply_operations(image_path, operations, output_path)
 
@@ -24,6 +24,7 @@ def apply_operations(
     output_path: str | Path,
 ) -> Path:
     image = _load_rgb(image_path)
+    image = _normalize_tone(image)
     for operation in operations:
         image = _apply_operation(image, operation)
     target = Path(output_path)
@@ -50,6 +51,21 @@ def _load_rgb(path: str | Path) -> Image.Image:
         return ImageOps.exif_transpose(image).convert("RGB")
 
 
+def _normalize_tone(image: Image.Image) -> Image.Image:
+    balanced = _gray_world_balance(image, strength=0.35)
+    normalized = ImageOps.autocontrast(balanced, cutoff=0.5)
+    return Image.blend(image, normalized, 0.55)
+
+
+def _gray_world_balance(image: Image.Image, *, strength: float) -> Image.Image:
+    arr = np.asarray(image).astype(np.float32) / 255.0
+    means = arr.reshape(-1, 3).mean(axis=0)
+    gray = float(means.mean())
+    gains = gray / np.maximum(means, 1e-4)
+    gains = 1.0 + (gains - 1.0) * strength
+    return _array_to_image(arr * gains)
+
+
 def _apply_operation(image: Image.Image, operation: Operation) -> Image.Image:
     if operation.type == "brightness":
         return _lift_shadows(image, operation.value)
@@ -60,7 +76,13 @@ def _apply_operation(image: Image.Image, operation: Operation) -> Image.Image:
     if operation.type == "contrast":
         return ImageEnhance.Contrast(image).enhance(1.0 + operation.value)
     if operation.type == "clarity":
-        return image.filter(ImageFilter.UnsharpMask(radius=1.2, percent=int(80 * operation.value + 20), threshold=3))
+        return image.filter(
+            ImageFilter.UnsharpMask(
+                radius=1.1,
+                percent=80 + int(260 * operation.value),
+                threshold=3,
+            )
+        )
     if operation.type == "warmth":
         return _adjust_warmth(image, operation.value)
     if operation.type == "sky_blue":
@@ -76,7 +98,8 @@ def _lift_shadows(image: Image.Image, value: float) -> Image.Image:
     arr = np.asarray(image).astype(np.float32) / 255.0
     luma = 0.2126 * arr[..., 0] + 0.7152 * arr[..., 1] + 0.0722 * arr[..., 2]
     shadow_weight = np.clip((0.72 - luma) / 0.72, 0, 1)[..., None]
-    lifted = arr + value * shadow_weight * (1.0 - arr)
+    lift = value * 0.22 + value * 0.95 * shadow_weight
+    lifted = arr + lift * (1.0 - arr)
     return _array_to_image(lifted)
 
 
@@ -106,11 +129,12 @@ def _subject_boost(image: Image.Image, value: float) -> Image.Image:
 
 
 def _soften(image: Image.Image, value: float) -> Image.Image:
-    lower_contrast = ImageEnhance.Contrast(image).enhance(1.0 - min(value, 0.4))
-    blurred = lower_contrast.filter(ImageFilter.GaussianBlur(radius=0.6))
-    return Image.blend(lower_contrast, blurred, 0.18)
+    lower_contrast = ImageEnhance.Contrast(image).enhance(1.0 - min(value * 0.75, 0.35))
+    lower_color = ImageEnhance.Color(lower_contrast).enhance(1.0 - min(value * 0.35, 0.18))
+    blurred = lower_color.filter(ImageFilter.GaussianBlur(radius=0.85))
+    softened = Image.blend(lower_color, blurred, 0.28)
+    return ImageEnhance.Brightness(softened).enhance(1.0 + min(value * 0.18, 0.08))
 
 
 def _array_to_image(arr: np.ndarray) -> Image.Image:
     return Image.fromarray((np.clip(arr, 0, 1) * 255).astype(np.uint8), mode="RGB")
-

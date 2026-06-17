@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageStat
 
 from app.engine.intent_mapper import parse_intent
 from app.engine.param_enhance import apply_operations, image_stats
@@ -34,6 +34,11 @@ def test_parse_intent_covers_prd_keywords():
         assert parse_intent(keyword)
 
 
+def test_soft_intent_does_not_raise_contrast():
+    operations = parse_intent("降低对比、柔光化")
+    assert [operation.type for operation in operations] == ["soft", "brightness"]
+
+
 def test_brightness_intent_increases_brightness(tmp_path):
     source = tmp_path / "source.jpg"
     target = tmp_path / "bright.jpg"
@@ -43,6 +48,7 @@ def test_brightness_intent_increases_brightness(tmp_path):
     after = image_stats(target)
     assert target.exists()
     assert after["brightness"] > before["brightness"]
+    assert _mean_abs_diff(source, target) > 12
 
 
 def test_saturation_intent_increases_saturation(tmp_path):
@@ -54,4 +60,20 @@ def test_saturation_intent_increases_saturation(tmp_path):
     after = image_stats(target)
     assert target.exists()
     assert after["saturation"] > before["saturation"]
+    assert _mean_abs_diff(source, target) > 10
 
+
+def test_default_enhancement_is_visibly_different(tmp_path):
+    source = tmp_path / "source.jpg"
+    target = tmp_path / "default.jpg"
+    _sample_image(source)
+
+    apply_operations(source, parse_intent(""), target)
+
+    assert _mean_abs_diff(source, target) > 10
+
+
+def _mean_abs_diff(before_path: Path, after_path: Path) -> float:
+    with Image.open(before_path) as before, Image.open(after_path) as after:
+        diff = ImageChops.difference(before.convert("RGB"), after.convert("RGB"))
+        return sum(ImageStat.Stat(diff).mean) / 3
