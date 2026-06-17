@@ -46,8 +46,7 @@ class _VideoWaitingPageState extends ConsumerState<VideoWaitingPage> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: ListView(
             children: [
               WaitingCard(
                 estimatedSeconds: widget.args.estimatedSeconds,
@@ -76,7 +75,7 @@ class _VideoWaitingPageState extends ConsumerState<VideoWaitingPage> {
                   onPressed: _poll,
                 ),
               ],
-              const Spacer(),
+              const SizedBox(height: 24),
               BigButton(
                 text: '先回首页',
                 subtitle: '制作会继续进行',

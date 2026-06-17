@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class PlaceholderScreen extends StatelessWidget {
   const PlaceholderScreen({
@@ -33,7 +34,13 @@ class PlaceholderScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 26),
                 OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).maybePop(),
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/');
+                    }
+                  },
                   icon: const Icon(Icons.arrow_back_rounded, size: 30),
                   label: const Text('返回'),
                 ),

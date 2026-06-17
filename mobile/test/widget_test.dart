@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -216,6 +218,61 @@ void main() {
     expect(find.text('拍纸质老照片'), findsOneWidget);
   });
 
+  testWidgets('app bar back returns home after go navigation', (tester) async {
+    await tester.pumpPhotoRescueApp();
+
+    await tester.tap(find.text('智能修照片'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('拍坏了也能救'), findsOneWidget);
+    expect(find.text('从哪里选照片?'), findsNothing);
+  });
+
+  testWidgets('home video action opens template page', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          templateCatalogProvider.overrideWith(
+            (ref) async => _templateCatalog(),
+          ),
+        ],
+        child: const PhotoRescueApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('做祝福视频'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('做祝福'), findsOneWidget);
+    expect(find.text('中秋团圆'), findsOneWidget);
+  });
+
+  testWidgets('template app bar back returns home after go navigation', (
+    tester,
+  ) async {
+    appRouter.go('/template');
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          templateCatalogProvider.overrideWith(
+            (ref) async => _templateCatalog(),
+          ),
+        ],
+        child: const PhotoRescueApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('拍坏了也能救'), findsOneWidget);
+    expect(find.text('做祝福'), findsNothing);
+  });
+
   testWidgets('history action opens empty history page', (tester) async {
     appRouter.go('/');
     await tester.pumpWidget(
@@ -230,6 +287,25 @@ void main() {
 
     expect(find.text('我修过的照片'), findsOneWidget);
     expect(find.text('还没有作品'), findsOneWidget);
+  });
+
+  testWidgets('history app bar back returns home after go navigation', (
+    tester,
+  ) async {
+    appRouter.go('/history');
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [historyEntriesProvider.overrideWith((ref) async => [])],
+        child: const PhotoRescueApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('拍坏了也能救'), findsOneWidget);
+    expect(find.text('我修过的照片'), findsNothing);
   });
 
   testWidgets('history page shows video entries', (tester) async {
@@ -396,24 +472,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          templateCatalogProvider.overrideWith((ref) async {
-            return const TemplateCatalog(
-              categories: [
-                TemplateCategory(
-                  id: 'festival',
-                  name: '节日祝福',
-                  templates: [
-                    BlessingTemplate(
-                      id: 'midautumn_reunion',
-                      name: '中秋团圆',
-                      motion: 'slow_zoom',
-                      textPresets: ['中秋快乐 阖家团圆', '千里共婵娟', '团圆庆中秋'],
-                    ),
-                  ],
-                ),
-              ],
-            );
-          }),
+          templateCatalogProvider.overrideWith(
+            (ref) async => _templateCatalog(),
+          ),
         ],
         child: const PhotoRescueApp(),
       ),
@@ -430,6 +491,117 @@ void main() {
     expect(find.text('中秋快乐 阖家团圆'), findsOneWidget);
     expect(find.text('选照片制作'), findsAtLeastNWidgets(1));
   });
+
+  testWidgets('placeholder return button goes home without route stack', (
+    tester,
+  ) async {
+    appRouter.go('/enhance/result/missing');
+    await tester.pumpWidget(const ProviderScope(child: PhotoRescueApp()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('这次结果暂时找不到'), findsOneWidget);
+
+    await tester.tap(find.text('返回'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('拍坏了也能救'), findsOneWidget);
+    expect(find.text('这次结果暂时找不到'), findsNothing);
+  });
+
+  testWidgets('video waiting failure can retry and return home', (
+    tester,
+  ) async {
+    final videoApi = _FakeVideoApi([
+      const JobStatusResult(
+        jobId: 'video-1',
+        status: 'failed',
+        progress: 45,
+        error: '制作失败了,稍后再试',
+      ),
+      const JobStatusResult(jobId: 'video-1', status: 'pending', progress: 60),
+    ]);
+    appRouter.go(
+      '/video/waiting/video-1',
+      extra: const VideoWaitingArgs(estimatedSeconds: 20),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [videoApiProvider.overrideWithValue(videoApi)],
+        child: const PhotoRescueApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('制作失败了,稍后再试'), findsOneWidget);
+    expect(find.text('再试一次'), findsOneWidget);
+
+    await tester.tap(find.text('再试一次'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(videoApi.statusCalls, 2);
+    expect(find.text('先回首页'), findsOneWidget);
+
+    await tester.tap(find.text('先回首页'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('拍坏了也能救'), findsOneWidget);
+  });
+
+  testWidgets('result page action panel opens animation setup', (tester) async {
+    tester.view.physicalSize = const Size(430, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final image = await _writeTinyImage();
+    final repository = _FakeHistoryRepository(cachedFile: image);
+    appRouter.go(
+      '/enhance/result/job-1',
+      extra: ResultPageArgs(
+        originalImagePath: image.path,
+        baseLocalPath: image.path,
+        cachedResultPaths: {0: image.path},
+        analyzeResult: const AnalyzeResult(
+          jobId: 'job-1',
+          baseImageUrl: 'https://example.com/base.jpg',
+          analysis: PhotoAnalysis(
+            scene: '室内',
+            subject: '家人',
+            problems: ['偏暗'],
+            options: [
+              RepairOption(name: '更明亮', intent: 'brighten'),
+              RepairOption(name: '更鲜艳', intent: 'vivid'),
+              RepairOption(name: '更柔和', intent: 'soft'),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          deviceConfigProvider.overrideWith((ref) async => _deviceConfig()),
+          historyRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: const PhotoRescueApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('发家人'), findsOneWidget);
+    expect(find.text('保存'), findsOneWidget);
+    expect(find.text('让照片动起来'), findsOneWidget);
+    await tester.tap(find.text('让照片动起来'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('让照片动'), findsOneWidget);
+    expect(find.text('缓慢推镜'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets('settings unlocks child config after long press version', (
     tester,
@@ -475,6 +647,8 @@ void main() {
 
     await tester.longPress(versionUnlock);
     await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView), const Offset(0, 640));
     await tester.pumpAndSettle();
 
@@ -486,6 +660,22 @@ void main() {
     );
     expect(find.text('保存配置'), findsOneWidget);
     expect(find.text('Relay API Key'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('lock_child_config_button')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('lock_child_config_button')),
+    );
+    await tester.tap(find.byKey(const ValueKey('lock_child_config_button')));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, 720));
+    await tester.pumpAndSettle();
+
+    expect(find.text('子女配置'), findsNothing);
+    expect(find.text('家庭设置'), findsOneWidget);
   });
 }
 
@@ -498,12 +688,43 @@ extension _PumpApp on WidgetTester {
 }
 
 class _FakeHistoryRepository extends HistoryRepository {
+  _FakeHistoryRepository({this.cachedFile});
+
+  final File? cachedFile;
   String? deletedJobId;
 
   @override
   Future<void> deleteEntry(String jobId) async {
     deletedJobId = jobId;
   }
+
+  @override
+  Future<File> cacheResultImage({
+    required Dio dio,
+    required String imageUrl,
+    required String jobId,
+    required String name,
+  }) async {
+    return cachedFile ?? await _writeTinyImage();
+  }
+
+  @override
+  Future<void> upsertBaseResult({
+    required String jobId,
+    required String originalImagePath,
+    required AnalyzeResult analyzeResult,
+    required String baseImagePath,
+  }) async {}
+
+  @override
+  Future<void> upsertOptionResult({
+    required String jobId,
+    required String originalImagePath,
+    required AnalyzeResult analyzeResult,
+    required int optionIndex,
+    required String resultImagePath,
+    required String intentName,
+  }) async {}
 }
 
 DeviceConfig _deviceConfig({
@@ -519,6 +740,51 @@ DeviceConfig _deviceConfig({
     enableAnimateOld: enableAnimateOld,
     hasRelayApiKey: false,
   );
+}
+
+TemplateCatalog _templateCatalog() {
+  return const TemplateCatalog(
+    categories: [
+      TemplateCategory(
+        id: 'festival',
+        name: '节日祝福',
+        templates: [
+          BlessingTemplate(
+            id: 'midautumn_reunion',
+            name: '中秋团圆',
+            motion: 'slow_zoom',
+            textPresets: ['中秋快乐 阖家团圆', '千里共婵娟', '团圆庆中秋'],
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+Future<File> _writeTinyImage() async {
+  final dir = Directory(
+    '${Directory.systemTemp.path}\\lao_zhao_widget_test_${DateTime.now().microsecondsSinceEpoch}',
+  )..createSync(recursive: true);
+  final file = File('${dir.path}/tiny.png');
+  file.writeAsBytesSync(base64Decode(_tinyPngBase64), flush: true);
+  return file;
+}
+
+const _tinyPngBase64 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+
+class _FakeVideoApi extends VideoApi {
+  _FakeVideoApi(this._statuses) : super(Dio());
+
+  final List<JobStatusResult> _statuses;
+  int statusCalls = 0;
+
+  @override
+  Future<JobStatusResult> getJobStatus(String jobId) async {
+    final index = statusCalls.clamp(0, _statuses.length - 1);
+    statusCalls += 1;
+    return _statuses[index];
+  }
 }
 
 class _FlakyAdapter implements HttpClientAdapter {

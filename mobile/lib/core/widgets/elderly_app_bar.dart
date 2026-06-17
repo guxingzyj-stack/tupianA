@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class ElderlyAppBar extends StatelessWidget implements PreferredSizeWidget {
   const ElderlyAppBar({
@@ -35,7 +36,13 @@ class ElderlyAppBar extends StatelessWidget implements PreferredSizeWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                onPressed: () => Navigator.of(context).maybePop(),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/');
+                  }
+                },
                 icon: const Icon(Icons.arrow_back_rounded),
               ),
             )

@@ -259,6 +259,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         const SizedBox(height: 12),
         BigButton(
+          key: const ValueKey('lock_child_config_button'),
           text: '退出配置',
           icon: Icons.lock_rounded,
           isPrimary: false,
