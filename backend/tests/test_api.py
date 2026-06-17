@@ -109,6 +109,45 @@ def test_analyze_falls_back_without_relay_and_enhance(monkeypatch, tmp_path):
     assert _mean_abs_diff(base_image, result_image) > 5
 
 
+def test_enhance_uses_remote_image_edit_when_configured(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    headers = {"X-App-Token": "test-token"}
+
+    async def fake_restore(self, input_path, output_path, instruction):
+        Image.new("RGB", (64, 48), (180, 120, 60)).save(output_path, format="JPEG")
+        return output_path
+
+    monkeypatch.setattr("app.api.enhance.QwenEditAdapter.restore", fake_restore)
+    analyze = client.post(
+        "/api/analyze",
+        json={"device_id": "d1", "image": _image_b64()},
+        headers=headers,
+    )
+    assert analyze.status_code == 200
+
+    config = client.put(
+        "/api/devices/d1/config",
+        json={
+            "relay_base_url": "https://relay.example.com/v1",
+            "relay_api_key": "secret-key",
+            "image_edit_model": "gpt-image-1.5",
+        },
+        headers=headers,
+    )
+    assert config.status_code == 200
+
+    enhance = client.post(
+        "/api/enhance",
+        json={"job_id": analyze.json()["job_id"], "option_index": 0},
+        headers=headers,
+    )
+    assert enhance.status_code == 200
+
+    job = get_job(analyze.json()["job_id"])
+    assert job is not None
+    assert job["metadata"]["enhance_processors"]["0"] == "image_edit"
+
+
 def test_analyze_accepts_shot_paper_flag(monkeypatch, tmp_path):
     client = _client(monkeypatch, tmp_path)
     headers = {"X-App-Token": "test-token"}
@@ -191,6 +230,7 @@ def test_device_config_api_masks_relay_key(monkeypatch, tmp_path):
             "relay_base_url": "https://relay.example.com/v1",
             "relay_api_key": "secret-key",
             "ai_model": "claude-sonnet-4-6",
+            "image_edit_model": "gpt-image-1.5",
         },
         headers=headers,
     )
@@ -210,6 +250,7 @@ def test_device_config_api_masks_relay_key(monkeypatch, tmp_path):
     assert read.status_code == 200
     assert read.json()["has_relay_api_key"] is True
     assert read.json()["wechat_app_id"] == "wx123"
+    assert read.json()["image_edit_model"] == "gpt-image-1.5"
     assert "relay_api_key" not in read.json()
 
     partial = client.put(
@@ -225,6 +266,7 @@ def test_device_config_api_masks_relay_key(monkeypatch, tmp_path):
     assert partial_body["wechat_universal_link"] == "https://example.com/wechat/"
     assert partial_body["relay_base_url"] == "https://relay.example.com/v1"
     assert partial_body["ai_model"] == "claude-sonnet-4-6"
+    assert partial_body["image_edit_model"] == "gpt-image-1.5"
     assert partial_body["has_relay_api_key"] is True
 
 

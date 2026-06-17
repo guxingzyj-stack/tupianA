@@ -23,6 +23,7 @@ class DeviceConfigResponse(BaseModel):
     wechat_universal_link: str | None
     relay_base_url: str | None
     ai_model: str | None
+    image_edit_model: str | None
     has_relay_api_key: bool
 
 
@@ -39,6 +40,7 @@ class DeviceConfigUpdate(BaseModel):
     relay_base_url: str | None = Field(default=None, max_length=300)
     relay_api_key: str | None = Field(default=None, max_length=500)
     ai_model: str | None = Field(default=None, max_length=80)
+    image_edit_model: str | None = Field(default=None, max_length=80)
     clear_relay_api_key: bool = False
 
 
@@ -59,6 +61,7 @@ async def put_device_config(device_id: str, payload: DeviceConfigUpdate) -> Devi
         "wechat_universal_link",
         "relay_base_url",
         "ai_model",
+        "image_edit_model",
     ):
         if key in payload.model_fields_set:
             value = getattr(payload, key)
@@ -102,5 +105,6 @@ def _to_response(device: dict[str, Any]) -> DeviceConfigResponse:
         wechat_universal_link=config.get("wechat_universal_link"),
         relay_base_url=config.get("relay_base_url"),
         ai_model=config.get("ai_model"),
+        image_edit_model=config.get("image_edit_model"),
         has_relay_api_key=bool(config.get("relay_api_key")),
     )

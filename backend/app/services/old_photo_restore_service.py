@@ -15,8 +15,19 @@ async def restore_old_photo(
     *,
     intent: str,
     option_name: str,
+    relay_base_url: str | None = None,
+    relay_api_key: str | None = None,
+    image_edit_model: str | None = None,
 ) -> tuple[Path, str]:
-    candidates = _adapter_candidates(input_path, output_path, intent, option_name)
+    candidates = _adapter_candidates(
+        input_path,
+        output_path,
+        intent,
+        option_name,
+        relay_base_url=relay_base_url,
+        relay_api_key=relay_api_key,
+        image_edit_model=image_edit_model,
+    )
     for adapter_name, call in candidates:
         try:
             return await call(), adapter_name
@@ -39,8 +50,16 @@ def _adapter_candidates(
     output_path: str | Path,
     intent: str,
     option_name: str,
+    *,
+    relay_base_url: str | None,
+    relay_api_key: str | None,
+    image_edit_model: str | None,
 ):
-    qwen = QwenEditAdapter()
+    qwen = QwenEditAdapter(
+        relay_base_url=relay_base_url,
+        relay_api_key=relay_api_key,
+        image_edit_model=image_edit_model,
+    )
     gfpgan = GFPGANAdapter()
     esrgan = RealESRGANAdapter()
     candidates = []
