@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import quote
 from urllib.parse import unquote
 from urllib.parse import urlparse
+from urllib.parse import urlunparse
 
 from fastapi import Request
 from PIL import Image, ImageOps
@@ -101,5 +102,9 @@ def public_url_for_path(path: str | Path, request: Request | None = None) -> str
     if settings.public_base_url:
         return f"{settings.public_base_url.rstrip('/')}/files/{encoded}"
     if request is not None:
-        return f"{str(request.base_url).rstrip('/')}/files/{encoded}"
+        base_url = str(request.base_url).rstrip("/")
+        parsed = urlparse(base_url)
+        if parsed.scheme == "http" and (parsed.hostname or "").endswith(".zeabur.app"):
+            base_url = urlunparse(("https", parsed.netloc, parsed.path.rstrip("/"), "", "", ""))
+        return f"{base_url}/files/{encoded}"
     return f"/files/{encoded}"
