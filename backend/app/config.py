@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     relay_base_url: str = ""
     relay_api_key: str = ""
     ai_model: str = "claude-sonnet-4-6"
-    image_edit_model: str = "gpt-image-2"
+    image_edit_model: str = "gpt-image-1.5-all"
     db_path: str = "./data/app.db"
     file_base: str = "./data/files"
     app_token: str = "dev-token-change-me"
