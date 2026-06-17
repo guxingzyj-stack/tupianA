@@ -9,6 +9,6 @@
     "signing":  "dedicated release keystore",
     "apk":  "lao-zhao-0.1.0-release.apk",
     "apk_bytes":  61049639,
-    "sha256":  "fc376dbdbabea2734dc78bf3d8dcaa616004b60311d6ecc1e05e96130e8ac9f0",
-    "built_at":  "2026-06-17T05:57:51.7022639Z"
+    "sha256":  "86c4eb80ed9d65d16d0975911ec8267ad17ed285b3fdef032db09fe24685c4d6",
+    "built_at":  "2026-06-17T08:19:13.8598107Z"
 }
