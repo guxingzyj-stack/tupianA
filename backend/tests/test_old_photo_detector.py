@@ -1,4 +1,5 @@
 from pathlib import Path
+import warnings
 
 from PIL import Image, ImageDraw, ImageFilter
 
@@ -40,3 +41,14 @@ def test_old_photo_detector_does_not_hit_modern_photo(tmp_path):
     is_old, signals = is_old_photo(path)
     assert not is_old, signals
 
+
+def test_old_photo_detector_handles_flat_color_without_warning(tmp_path):
+    path = tmp_path / "flat.jpg"
+    Image.new("RGB", (80, 60), (120, 120, 120)).save(path, quality=95)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        is_old, signals = is_old_photo(path)
+
+    assert isinstance(is_old, bool)
+    assert isinstance(signals, list)

@@ -100,12 +100,15 @@ def _rgb_to_hsv(arr: np.ndarray) -> np.ndarray:
     red_max = (maxc == red) & nonzero
     green_max = (maxc == green) & nonzero
     blue_max = (maxc == blue) & nonzero
-    hue = np.where(red_max, ((green - blue) / delta) % 6, hue)
-    hue = np.where(green_max, ((blue - red) / delta) + 2, hue)
-    hue = np.where(blue_max, ((red - green) / delta) + 4, hue)
+    red_hue = np.divide(green - blue, delta, out=np.zeros_like(delta), where=nonzero) % 6
+    green_hue = np.divide(blue - red, delta, out=np.zeros_like(delta), where=nonzero) + 2
+    blue_hue = np.divide(red - green, delta, out=np.zeros_like(delta), where=nonzero) + 4
+    hue = np.where(red_max, red_hue, hue)
+    hue = np.where(green_max, green_hue, hue)
+    hue = np.where(blue_max, blue_hue, hue)
     hue = hue / 6.0
 
-    saturation = np.where(maxc <= 1e-6, 0, delta / maxc)
+    saturation = np.divide(delta, maxc, out=np.zeros_like(maxc), where=maxc > 1e-6)
     return np.stack([hue, saturation, maxc], axis=2)
 
 
@@ -154,4 +157,3 @@ def _laplacian_variance(gray: np.ndarray) -> float:
     center = gray[1:-1, 1:-1] * -4
     lap = center + gray[:-2, 1:-1] + gray[2:, 1:-1] + gray[1:-1, :-2] + gray[1:-1, 2:]
     return float(np.var(lap))
-
