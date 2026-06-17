@@ -22,6 +22,7 @@ $env:RELAY_BASE_URL="https://your-relay.example.com/v1"
 $env:RELAY_API_KEY="your-relay-key"
 $env:DB_PATH="/volume/app.db"
 $env:FILE_BASE="/volume/files"
+$env:PUBLIC_BASE_URL="https://<service>.zeabur.app"
 powershell -ExecutionPolicy Bypass -File scripts/preflight.ps1 -StrictBackendEnv
 ```
 
@@ -76,6 +77,8 @@ flutter run `
 ```
 
 真机访问本机后端时,把 `API_BASE_URL` 换成电脑局域网 IP。部署后换成 Zeabur 的 HTTPS 地址。
+
+Zeabur 部署时建议设置 `PUBLIC_BASE_URL=https://<service>.zeabur.app`,确保 App 下载图片和视频时拿到 HTTPS 文件链接。
 
 ## 公网部署验收
 

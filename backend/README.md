@@ -70,6 +70,7 @@ $env:RELAY_BASE_URL="https://your-relay.example.com/v1"
 $env:RELAY_API_KEY="your-relay-key"
 $env:DB_PATH="/volume/app.db"
 $env:FILE_BASE="/volume/files"
+$env:PUBLIC_BASE_URL="https://<service>.zeabur.app"
 python scripts/check_env.py
 ```
 
@@ -100,6 +101,7 @@ docker build -t lao-zhao-backend .
    - `RELAY_API_KEY`
    - `DB_PATH=/volume/app.db`
    - `FILE_BASE=/volume/files`
+   - `PUBLIC_BASE_URL=https://<service>.zeabur.app`
    - `APP_TOKEN`
    - `STORAGE_RETENTION_HOURS=24`
    - `STORAGE_CLEANUP_INTERVAL_SECONDS=3600`

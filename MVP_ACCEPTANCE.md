@@ -51,6 +51,7 @@
 | Android release signing config | 已通过 | Uses `android/key.properties` when present; secrets ignored by git; Android debug build still passes |
 | Android keystore helper | 已通过 | `mobile/scripts/create_android_keystore.ps1`; real local keystore generated at ignored `mobile/android/keystore/lao-zhao-release.jks`; `key.properties` ignored |
 | Android dedicated release signing | 已通过 | Placeholder release APK built with dedicated keystore; `apksigner verify --print-certs`: v2 signature true, signer `CN=Lao Zhao`, RSA 2048 |
+| Zeabur 文件 URL HTTPS | 已修复 | `backend/app/storage/files.py` converts `http://*.zeabur.app` file URLs to HTTPS and supports explicit `PUBLIC_BASE_URL`; prevents Android release builds from spinning on blocked HTTP image loads |
 | iOS build | 未验证 | 需要 macOS/Xcode 环境 |
 | iOS install evidence helper | 已实现 | `mobile/scripts/record_ios_install_evidence.ps1`; records device model, iOS version, app version, bundle id, signing team, and optional screenshot |
 
