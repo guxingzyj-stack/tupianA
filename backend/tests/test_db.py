@@ -59,6 +59,7 @@ def test_list_jobs_by_device_orders_newest_first(tmp_path):
 def test_device_config_roundtrip(tmp_path):
     db_path = str(tmp_path / "app.db")
     device = get_or_create_device("device-a", nickname="王奶奶", db_path=db_path)
+    assert device["daily_budget_cny"] == 500.0
     assert device["daily_video_limit"] == 10
     updated = update_device_config(
         "device-a",
@@ -70,4 +71,3 @@ def test_device_config_roundtrip(tmp_path):
     assert updated["daily_budget_cny"] == 8.5
     assert updated["enable_video"] == 0
     assert updated["config"] == {"share_target": "家人群"}
-

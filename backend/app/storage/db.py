@@ -12,6 +12,8 @@ from app.config import get_settings
 
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
+DEFAULT_DAILY_BUDGET_CNY = 500.0
+DEFAULT_DAILY_VIDEO_LIMIT = 10
 
 
 def _resolve_db_path(db_path: str | None = None) -> str:
@@ -301,9 +303,9 @@ def get_or_create_device(
                     preferred_style, enable_video, enable_animate_old,
                     config_json, created_at
                 )
-                VALUES (?, ?, 10.0, 10, NULL, 1, 0, NULL, ?)
+                VALUES (?, ?, ?, ?, NULL, 1, 0, NULL, ?)
                 """,
-                (device_id, nickname, _now()),
+                (device_id, nickname, DEFAULT_DAILY_BUDGET_CNY, DEFAULT_DAILY_VIDEO_LIMIT, _now()),
             )
             conn.commit()
         except Exception:

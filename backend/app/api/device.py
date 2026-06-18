@@ -5,7 +5,12 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from app.storage.db import get_or_create_device, update_device_config
+from app.storage.db import (
+    DEFAULT_DAILY_BUDGET_CNY,
+    DEFAULT_DAILY_VIDEO_LIMIT,
+    get_or_create_device,
+    update_device_config,
+)
 
 router = APIRouter()
 
@@ -95,8 +100,8 @@ def _to_response(device: dict[str, Any]) -> DeviceConfigResponse:
     return DeviceConfigResponse(
         device_id=device["device_id"],
         nickname=device.get("nickname"),
-        daily_budget_cny=float(10.0 if daily_budget is None else daily_budget),
-        daily_video_limit=int(10 if daily_video_limit is None else daily_video_limit),
+        daily_budget_cny=float(DEFAULT_DAILY_BUDGET_CNY if daily_budget is None else daily_budget),
+        daily_video_limit=int(DEFAULT_DAILY_VIDEO_LIMIT if daily_video_limit is None else daily_video_limit),
         preferred_style=device.get("preferred_style"),
         enable_video=bool(device.get("enable_video", 1)),
         enable_animate_old=bool(device.get("enable_animate_old", 0)),

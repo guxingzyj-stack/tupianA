@@ -16,7 +16,7 @@ CREATE INDEX IF NOT EXISTS idx_jobs_device ON jobs(device_id, created_at DESC);
 CREATE TABLE IF NOT EXISTS devices (
     device_id TEXT PRIMARY KEY,
     nickname TEXT,
-    daily_budget_cny REAL DEFAULT 10.0,
+    daily_budget_cny REAL DEFAULT 500.0,
     daily_video_limit INTEGER DEFAULT 10,
     preferred_style TEXT,
     enable_video INTEGER DEFAULT 1,
@@ -24,4 +24,3 @@ CREATE TABLE IF NOT EXISTS devices (
     config_json TEXT,
     created_at INTEGER NOT NULL
 );
-
