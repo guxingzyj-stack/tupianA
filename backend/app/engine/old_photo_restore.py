@@ -5,6 +5,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
+from app.services.runtime_memory import release_memory
+
 
 OLD_PHOTO_INTENT_KEYWORDS = (
     "去模糊",
@@ -42,7 +44,12 @@ def apply_local_old_photo_restore(
 
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    result.save(target, format="JPEG", quality=94, optimize=True)
+    try:
+        result.save(target, format="JPEG", quality=92, optimize=True)
+    finally:
+        result.close()
+        image.close()
+        release_memory()
     return target
 
 

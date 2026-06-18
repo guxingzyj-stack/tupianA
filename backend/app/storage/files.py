@@ -13,9 +13,11 @@ from fastapi import Request
 from PIL import Image, ImageOps
 
 from app.config import get_settings
+from app.services.runtime_memory import release_memory
 
 
 _SAFE_SEGMENT_RE = re.compile(r"[^A-Za-z0-9_.-]+")
+MAX_STORED_IMAGE_DIMENSION = 2048
 
 
 def sanitize_segment(value: str) -> str:
@@ -57,7 +59,12 @@ def save_base64_image(
     safe_job = sanitize_segment(job_id)
     target = base / "inputs" / safe_device / f"{safe_job}.jpg"
     target.parent.mkdir(parents=True, exist_ok=True)
-    image.save(target, format="JPEG", quality=94, optimize=True)
+    try:
+        image.thumbnail((MAX_STORED_IMAGE_DIMENSION, MAX_STORED_IMAGE_DIMENSION), Image.Resampling.LANCZOS)
+        image.save(target, format="JPEG", quality=92, optimize=True)
+    finally:
+        image.close()
+        release_memory()
     return target
 
 

@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from app.engine.intent_mapper import Operation
+from app.services.runtime_memory import release_memory
 
 
 def apply_basic_enhancement(image_path: str | Path, output_path: str | Path) -> Path:
@@ -29,7 +30,11 @@ def apply_operations(
         image = _apply_operation(image, operation)
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    image.save(target, format="JPEG", quality=94, optimize=True)
+    try:
+        image.save(target, format="JPEG", quality=92, optimize=True)
+    finally:
+        image.close()
+        release_memory()
     return target
 
 

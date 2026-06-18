@@ -10,6 +10,10 @@ from PIL import Image, ImageOps
 
 from app.adapters.base import AdapterFailure
 from app.config import Settings, get_settings
+from app.services.runtime_memory import release_memory
+
+
+MAX_EDIT_IMAGE_DIMENSION = 1536
 
 
 class QwenEditAdapter:
@@ -69,6 +73,8 @@ class QwenEditAdapter:
             return _save_result_image(result_bytes, output_path)
         except Exception as exc:
             raise AdapterFailure("image edit response is invalid") from exc
+        finally:
+            release_memory()
 
 
 def _build_prompt(instruction: str) -> str:
@@ -83,17 +89,12 @@ def _build_prompt(instruction: str) -> str:
 
 
 def _prepare_image(path: Path) -> tuple[bytes, str]:
-    suffix = path.suffix.lower()
-    if suffix in {".jpg", ".jpeg"}:
-        return path.read_bytes(), "image/jpeg"
-    if suffix == ".png":
-        return path.read_bytes(), "image/png"
-    if suffix == ".webp":
-        return path.read_bytes(), "image/webp"
-
     buffer = BytesIO()
     with Image.open(path) as image:
-        ImageOps.exif_transpose(image).convert("RGB").save(buffer, format="JPEG", quality=95)
+        prepared = ImageOps.exif_transpose(image).convert("RGB")
+        prepared.thumbnail((MAX_EDIT_IMAGE_DIMENSION, MAX_EDIT_IMAGE_DIMENSION), Image.Resampling.LANCZOS)
+        prepared.save(buffer, format="JPEG", quality=92, optimize=True)
+        prepared.close()
     return buffer.getvalue(), "image/jpeg"
 
 
@@ -124,5 +125,8 @@ def _save_result_image(image_bytes: bytes, output_path: str | Path) -> Path:
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
     with Image.open(BytesIO(image_bytes)) as image:
-        ImageOps.exif_transpose(image).convert("RGB").save(target, format="JPEG", quality=94, optimize=True)
+        result = ImageOps.exif_transpose(image).convert("RGB")
+        result.thumbnail((MAX_EDIT_IMAGE_DIMENSION, MAX_EDIT_IMAGE_DIMENSION), Image.Resampling.LANCZOS)
+        result.save(target, format="JPEG", quality=92, optimize=True)
+        result.close()
     return target
