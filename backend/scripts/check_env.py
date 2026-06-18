@@ -25,7 +25,7 @@ def main() -> None:
     storage_retention_hours = _int_env("STORAGE_RETENTION_HOURS", 24, errors)
     cleanup_interval = _int_env("STORAGE_CLEANUP_INTERVAL_SECONDS", 3600, errors)
     rate_limit = _int_env("RATE_LIMIT_PER_MINUTE", 60, errors)
-    worker_count = _int_env("WORKER_COUNT", 2, errors)
+    worker_count = _int_env("WORKER_COUNT", 1, errors)
 
     if not app_token:
         _local_or_error(

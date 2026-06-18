@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     app_token: str = "dev-token-change-me"
     public_base_url: str = ""
     rate_limit_per_minute: int = Field(default=60, ge=1)
-    worker_count: int = Field(default=2, ge=1)
+    worker_count: int = Field(default=1, ge=1)
     storage_retention_hours: int = Field(default=24, ge=1)
     storage_cleanup_interval_seconds: int = Field(default=3600, ge=60)
     cors_allow_origins: str = "http://localhost:8080,http://127.0.0.1:8080"

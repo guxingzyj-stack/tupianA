@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import contextlib
+import gc
 import math
+import os
 from pathlib import Path
 
 import cv2
@@ -15,6 +18,7 @@ MOTION_LABELS = {
     "subtle_human": "人物轻动",
 }
 WATERMARK_TEXT = "AI 生成"
+MAX_VIDEO_DIMENSION = 640
 
 
 def create_local_motion_video(
@@ -22,8 +26,8 @@ def create_local_motion_video(
     output_path: str | Path,
     *,
     motion: str,
-    duration_seconds: int = 8,
-    fps: int = 12,
+    duration_seconds: int = 6,
+    fps: int = 10,
 ) -> Path:
     if motion not in ALLOWED_MOTIONS:
         raise ValueError("这个动态方式不存在")
@@ -32,9 +36,11 @@ def create_local_motion_video(
     width, height = source.size
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
+    temp_target = target.with_name(f"{target.stem}.tmp-{os.getpid()}{target.suffix}")
 
+    cv2.setNumThreads(1)
     writer = cv2.VideoWriter(
-        str(target),
+        str(temp_target),
         cv2.VideoWriter_fourcc(*"mp4v"),
         fps,
         (width, height),
@@ -47,9 +53,18 @@ def create_local_motion_video(
         for frame_index in range(frame_count):
             progress = frame_index / max(frame_count - 1, 1)
             frame = _render_frame(source, motion=motion, progress=progress)
-            writer.write(cv2.cvtColor(np.asarray(frame), cv2.COLOR_RGB2BGR))
+            writer.write(cv2.cvtColor(np.asarray(frame, dtype=np.uint8), cv2.COLOR_RGB2BGR))
     finally:
         writer.release()
+        with contextlib.suppress(Exception):
+            cv2.destroyAllWindows()
+        gc.collect()
+
+    if not temp_target.exists() or temp_target.stat().st_size <= 0:
+        with contextlib.suppress(OSError):
+            temp_target.unlink()
+        raise RuntimeError("video output is empty")
+    temp_target.replace(target)
 
     return target
 
@@ -57,7 +72,7 @@ def create_local_motion_video(
 def _load_frame(path: str | Path) -> Image.Image:
     with Image.open(path) as image:
         image = ImageOps.exif_transpose(image).convert("RGB")
-        image.thumbnail((720, 720), Image.Resampling.LANCZOS)
+        image.thumbnail((MAX_VIDEO_DIMENSION, MAX_VIDEO_DIMENSION), Image.Resampling.LANCZOS)
         width, height = image.size
         even_size = (width - width % 2, height - height % 2)
         if even_size != image.size:
