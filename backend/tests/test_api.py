@@ -5,7 +5,8 @@ from fastapi.testclient import TestClient
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageStat
 
 from app.config import get_settings
-from app.storage.db import get_job
+from app.services.budget import add_estimated_cost
+from app.storage.db import create_job, get_job
 
 
 def _image_b64() -> str:
@@ -268,6 +269,28 @@ def test_device_config_api_masks_relay_key(monkeypatch, tmp_path):
     assert partial_body["ai_model"] == "claude-sonnet-4-6"
     assert partial_body["image_edit_model"] == "gpt-image-1.5-all"
     assert partial_body["has_relay_api_key"] is True
+
+
+def test_device_usage_api_reports_budget_spend(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    headers = {"X-App-Token": "test-token"}
+    create_job(
+        "d1",
+        "enhance",
+        status="success",
+        metadata=add_estimated_cost({}, reason="image_edit:0", amount_cny=0.5),
+    )
+
+    usage = client.get("/api/devices/d1/usage", headers=headers)
+
+    assert usage.status_code == 200
+    body = usage.json()
+    assert body["daily_budget_cny"] == 500.0
+    assert body["spent_today_cny"] == 0.5
+    assert body["remaining_budget_cny"] == 499.5
+    assert body["job_count_24h"] == 1
+    assert body["operation_costs_cny"]["image_edit"] == 0.5
+    assert body["latest_jobs"][0]["type"] == "enhance"
 
 
 def test_video_respects_device_config_disable(monkeypatch, tmp_path):

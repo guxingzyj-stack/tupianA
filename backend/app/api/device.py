@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from app.services.budget import (
+    ANALYZE_COST_CNY,
+    OLD_PHOTO_RESTORE_COST_CNY,
+    TEMPLATE_COST_CNY,
+    VIDEO_COST_CNY,
+    spent_today_cny,
+)
 from app.storage.db import (
     DEFAULT_DAILY_BUDGET_CNY,
     DEFAULT_DAILY_VIDEO_LIMIT,
     get_or_create_device,
+    list_jobs_by_device_since,
     update_device_config,
 )
 
@@ -49,9 +58,60 @@ class DeviceConfigUpdate(BaseModel):
     clear_relay_api_key: bool = False
 
 
+class DeviceUsageJobResponse(BaseModel):
+    job_id: str
+    type: str
+    status: str
+    estimated_cost_cny: float
+    created_at: int
+
+
+class DeviceUsageResponse(BaseModel):
+    device_id: str
+    daily_budget_cny: float
+    spent_today_cny: float
+    remaining_budget_cny: float
+    job_count_24h: int
+    operation_costs_cny: dict[str, float]
+    latest_jobs: list[DeviceUsageJobResponse]
+
+
 @router.get("/devices/{device_id}/config", response_model=DeviceConfigResponse)
 async def get_device_config(device_id: str) -> DeviceConfigResponse:
     return _to_response(get_or_create_device(device_id))
+
+
+@router.get("/devices/{device_id}/usage", response_model=DeviceUsageResponse)
+async def get_device_usage(device_id: str) -> DeviceUsageResponse:
+    device = get_or_create_device(device_id)
+    daily_budget = float(device.get("daily_budget_cny") or DEFAULT_DAILY_BUDGET_CNY)
+    spent = spent_today_cny(device_id)
+    since = int(time.time()) - 24 * 60 * 60
+    jobs = list_jobs_by_device_since(device_id, since_ts=since, limit=50)
+    latest_jobs = [
+        DeviceUsageJobResponse(
+            job_id=str(job["id"]),
+            type=str(job["type"]),
+            status=str(job["status"]),
+            estimated_cost_cny=float((job.get("metadata") or {}).get("estimated_cost_cny") or 0),
+            created_at=int(job["created_at"]),
+        )
+        for job in jobs[:20]
+    ]
+    return DeviceUsageResponse(
+        device_id=device_id,
+        daily_budget_cny=daily_budget,
+        spent_today_cny=spent,
+        remaining_budget_cny=round(max(daily_budget - spent, 0), 4),
+        job_count_24h=len(jobs),
+        operation_costs_cny={
+            "analyze": ANALYZE_COST_CNY,
+            "image_edit": OLD_PHOTO_RESTORE_COST_CNY,
+            "video": VIDEO_COST_CNY,
+            "template": TEMPLATE_COST_CNY,
+        },
+        latest_jobs=latest_jobs,
+    )
 
 
 @router.put("/devices/{device_id}/config", response_model=DeviceConfigResponse)
