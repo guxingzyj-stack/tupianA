@@ -4,6 +4,7 @@ import base64
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 from PIL import Image, ImageOps
@@ -14,6 +15,7 @@ from app.services.runtime_memory import release_memory
 
 
 MAX_EDIT_IMAGE_DIMENSION = 1536
+IMAGE_EDIT_PATH = "/images/edits"
 
 
 class QwenEditAdapter:
@@ -26,7 +28,8 @@ class QwenEditAdapter:
         image_edit_model: str | None = None,
     ):
         self.settings = settings or get_settings()
-        self.relay_base_url = relay_base_url or self.settings.relay_base_url
+        raw_base_url = relay_base_url or self.settings.relay_base_url
+        self.relay_base_url, self.image_edit_path = _normalize_image_edit_endpoint(raw_base_url)
         self.relay_api_key = relay_api_key or self.settings.relay_api_key
         self.image_edit_model = image_edit_model or self.settings.image_edit_model
 
@@ -48,12 +51,12 @@ class QwenEditAdapter:
 
         try:
             async with httpx.AsyncClient(
-                base_url=self.relay_base_url.rstrip("/"),
+                base_url=self.relay_base_url,
                 timeout=httpx.Timeout(120.0),
                 headers={"Authorization": f"Bearer {self.relay_api_key}"},
             ) as client:
                 response = await client.post(
-                    "/images/edits",
+                    self.image_edit_path,
                     data={
                         "model": self.image_edit_model,
                         "prompt": prompt,
@@ -75,6 +78,20 @@ class QwenEditAdapter:
             raise AdapterFailure("image edit response is invalid") from exc
         finally:
             release_memory()
+
+
+def _normalize_image_edit_endpoint(relay_base_url: str) -> tuple[str, str]:
+    normalized = relay_base_url.strip().rstrip("/")
+    if not normalized:
+        return "", IMAGE_EDIT_PATH
+
+    parsed = urlsplit(normalized)
+    path = parsed.path.rstrip("/")
+    if path.endswith(IMAGE_EDIT_PATH):
+        base_path = path[: -len(IMAGE_EDIT_PATH)]
+        normalized = urlunsplit((parsed.scheme, parsed.netloc, base_path, "", ""))
+
+    return normalized.rstrip("/"), IMAGE_EDIT_PATH
 
 
 def _build_prompt(instruction: str) -> str:

@@ -27,9 +27,11 @@ class _FakeResponse:
 
 class _FakeAsyncClient:
     last_request = None
+    last_kwargs = None
 
     def __init__(self, *args, **kwargs):
         self.kwargs = kwargs
+        _FakeAsyncClient.last_kwargs = kwargs
 
     async def __aenter__(self):
         return self
@@ -68,10 +70,31 @@ async def test_qwen_edit_adapter_calls_image_edit_api_and_saves_jpeg(monkeypatch
     with Image.open(target) as image:
         assert image.mode == "RGB"
         assert image.size == (32, 24)
+    assert _FakeAsyncClient.last_kwargs["base_url"] == "https://relay.example.com/v1"
     assert _FakeAsyncClient.last_request["path"] == "/images/edits"
     assert _FakeAsyncClient.last_request["data"]["model"] == "gpt-image-1.5-all"
     assert "自然修复老照片" in _FakeAsyncClient.last_request["data"]["prompt"]
     assert _FakeAsyncClient.last_request["headers"]["Authorization"] == "Bearer secret"
+
+
+@pytest.mark.asyncio
+async def test_qwen_edit_adapter_accepts_full_image_edit_endpoint(monkeypatch, tmp_path):
+    monkeypatch.setattr("app.adapters.qwen_edit_adapter.httpx.AsyncClient", _FakeAsyncClient)
+    source = tmp_path / "source.jpg"
+    target = tmp_path / "edited.jpg"
+    source.write_bytes(_jpeg_bytes())
+
+    adapter = QwenEditAdapter(
+        relay_base_url="https://relay.example.com/v1/images/edits",
+        relay_api_key="secret",
+        image_edit_model="gpt-image-2",
+    )
+
+    await adapter.restore(source, target, instruction="restore")
+
+    assert _FakeAsyncClient.last_kwargs["base_url"] == "https://relay.example.com/v1"
+    assert _FakeAsyncClient.last_request["path"] == "/images/edits"
+    assert _FakeAsyncClient.last_request["data"]["model"] == "gpt-image-2"
 
 
 @pytest.mark.asyncio
