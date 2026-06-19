@@ -56,7 +56,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     _baseImageRef =
         widget.args?.baseLocalPath ?? widget.args?.analyzeResult.baseImageUrl;
     Future<void>.microtask(_recordBaseResult);
-    Future<void>.microtask(_applyPreferredOption);
+    Future<void>.microtask(_applyInitialOption);
   }
 
   @override
@@ -167,26 +167,32 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     }
   }
 
-  Future<void> _applyPreferredOption() async {
+  Future<void> _applyInitialOption() async {
     if (_appliedPreferred || _result == null) {
       return;
     }
     _appliedPreferred = true;
+    var targetIndex = 0;
     try {
       final config = await ref.read(deviceConfigProvider.future);
       final preferred = config.preferredStyle;
-      if (preferred == null || preferred.isEmpty) {
-        return;
-      }
       final options = _result!.analysis.options;
-      final index = options.indexWhere((option) => option.name == preferred);
-      if (index <= 0 || !mounted) {
-        return;
+      if (preferred != null && preferred.isNotEmpty) {
+        final index = options.indexWhere((option) => option.name == preferred);
+        if (index >= 0) {
+          targetIndex = index;
+        }
       }
-      await _selectOption(index);
     } catch (_) {
       // Preference loading should never block the result page.
     }
+    if (!mounted ||
+        _result == null ||
+        targetIndex >= _result!.analysis.options.length ||
+        _resultRefs.containsKey(targetIndex)) {
+      return;
+    }
+    await _selectOption(targetIndex);
   }
 
   Future<void> _rememberPreferredOption(int optionIndex) async {
