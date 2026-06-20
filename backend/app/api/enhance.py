@@ -59,9 +59,7 @@ async def enhance_photo(payload: EnhanceRequest, request: Request) -> EnhanceRes
     device = get_or_create_device(job["device_id"])
     device_config = device.get("config") or {}
     settings = get_settings()
-    relay_base_url = device_config.get("relay_base_url") or settings.relay_base_url
-    relay_api_key = device_config.get("relay_api_key") or settings.relay_api_key
-    image_edit_model = device_config.get("image_edit_model") or settings.image_edit_model
+    image_edit_providers = _image_edit_providers(device_config, settings)
     old_photo_meta = metadata.get("old_photo") or {}
     should_restore_old_photo = bool(old_photo_meta.get("is_old")) or is_old_photo_intent(
         intent,
@@ -83,9 +81,7 @@ async def enhance_photo(payload: EnhanceRequest, request: Request) -> EnhanceRes
                     target,
                     intent=intent,
                     option_name=option_name,
-                    relay_base_url=relay_base_url,
-                    relay_api_key=relay_api_key,
-                    image_edit_model=image_edit_model,
+                    image_edit_providers=image_edit_providers,
                 )
                 processors = dict(metadata.get("restore_processors") or {})
                 processors[str(payload.option_index)] = processor
@@ -101,9 +97,7 @@ async def enhance_photo(payload: EnhanceRequest, request: Request) -> EnhanceRes
                     job["input_path"],
                     target,
                     intent=intent,
-                    relay_base_url=relay_base_url,
-                    relay_api_key=relay_api_key,
-                    image_edit_model=image_edit_model,
+                    image_edit_providers=image_edit_providers,
                 )
                 if processor is None:
                     apply_operations(job["input_path"], operations, target)
@@ -145,21 +139,57 @@ async def _try_remote_image_edit(
     output_path: str | Path,
     *,
     intent: str,
-    relay_base_url: str | None,
-    relay_api_key: str | None,
-    image_edit_model: str | None,
+    image_edit_providers: list[dict[str, str | None]],
 ) -> str | None:
-    if not relay_base_url or not relay_api_key:
+    if not image_edit_providers:
         return None
 
     ensure_daily_budget_available(device_id, OLD_PHOTO_RESTORE_COST_CNY)
-    adapter = QwenEditAdapter(
-        relay_base_url=relay_base_url,
-        relay_api_key=relay_api_key,
-        image_edit_model=image_edit_model,
-    )
-    try:
-        await adapter.restore(input_path, output_path, instruction=intent)
-    except AdapterFailure:
-        return None
-    return "image_edit"
+    for provider in image_edit_providers:
+        adapter = QwenEditAdapter(
+            relay_base_url=provider["relay_base_url"],
+            relay_api_key=provider["relay_api_key"],
+            image_edit_model=provider["image_edit_model"],
+        )
+        try:
+            await adapter.restore(input_path, output_path, instruction=intent)
+        except AdapterFailure:
+            continue
+        return str(provider["processor"])
+    return None
+
+
+def _image_edit_providers(device_config: dict[str, Any], settings) -> list[dict[str, str | None]]:
+    primary = {
+        "relay_base_url": device_config.get("relay_base_url") or settings.relay_base_url,
+        "relay_api_key": device_config.get("relay_api_key") or settings.relay_api_key,
+        "image_edit_model": device_config.get("image_edit_model") or settings.image_edit_model,
+        "processor": "image_edit",
+    }
+    fallback = {
+        "relay_base_url": (
+            device_config.get("image_edit_fallback_base_url") or settings.image_edit_fallback_base_url
+        ),
+        "relay_api_key": (
+            device_config.get("image_edit_fallback_api_key") or settings.image_edit_fallback_api_key
+        ),
+        "image_edit_model": (
+            device_config.get("image_edit_fallback_model")
+            or settings.image_edit_fallback_model
+            or primary["image_edit_model"]
+        ),
+        "processor": "image_edit_fallback",
+    }
+    providers: list[dict[str, str | None]] = []
+    seen: set[tuple[str | None, str | None, str | None]] = set()
+    for provider in (primary, fallback):
+        key = (
+            provider["relay_base_url"],
+            provider["relay_api_key"],
+            provider["image_edit_model"],
+        )
+        if not provider["relay_base_url"] or not provider["relay_api_key"] or key in seen:
+            continue
+        seen.add(key)
+        providers.append(provider)
+    return providers

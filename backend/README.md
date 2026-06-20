@@ -68,6 +68,9 @@ powershell -ExecutionPolicy Bypass -File scripts/run_local_smoke.ps1
 $env:APP_TOKEN="your-long-random-token"
 $env:RELAY_BASE_URL="https://your-relay.example.com/v1"
 $env:RELAY_API_KEY="your-relay-key"
+$env:IMAGE_EDIT_FALLBACK_BASE_URL="https://your-fallback-relay.example.com/v1"
+$env:IMAGE_EDIT_FALLBACK_API_KEY="your-fallback-relay-key"
+$env:IMAGE_EDIT_FALLBACK_MODEL="gpt-image-2"
 $env:DB_PATH="/volume/app.db"
 $env:FILE_BASE="/volume/files"
 $env:PUBLIC_BASE_URL="https://<service>.zeabur.app"
@@ -99,6 +102,10 @@ docker build -t lao-zhao-backend .
 5. 设置环境变量:
    - `RELAY_BASE_URL`
    - `RELAY_API_KEY`
+   - `IMAGE_EDIT_MODEL`
+   - `IMAGE_EDIT_FALLBACK_BASE_URL`
+   - `IMAGE_EDIT_FALLBACK_API_KEY`
+   - `IMAGE_EDIT_FALLBACK_MODEL`
    - `DB_PATH=/volume/app.db`
    - `FILE_BASE=/volume/files`
    - `PUBLIC_BASE_URL=https://<service>.zeabur.app`

@@ -38,7 +38,10 @@ class DeviceConfigResponse(BaseModel):
     relay_base_url: str | None
     ai_model: str | None
     image_edit_model: str | None
+    image_edit_fallback_base_url: str | None
+    image_edit_fallback_model: str | None
     has_relay_api_key: bool
+    has_image_edit_fallback_api_key: bool
 
 
 class DeviceConfigUpdate(BaseModel):
@@ -55,7 +58,11 @@ class DeviceConfigUpdate(BaseModel):
     relay_api_key: str | None = Field(default=None, max_length=500)
     ai_model: str | None = Field(default=None, max_length=80)
     image_edit_model: str | None = Field(default=None, max_length=80)
+    image_edit_fallback_base_url: str | None = Field(default=None, max_length=300)
+    image_edit_fallback_api_key: str | None = Field(default=None, max_length=500)
+    image_edit_fallback_model: str | None = Field(default=None, max_length=80)
     clear_relay_api_key: bool = False
+    clear_image_edit_fallback_api_key: bool = False
 
 
 class DeviceUsageJobResponse(BaseModel):
@@ -127,6 +134,8 @@ async def put_device_config(device_id: str, payload: DeviceConfigUpdate) -> Devi
         "relay_base_url",
         "ai_model",
         "image_edit_model",
+        "image_edit_fallback_base_url",
+        "image_edit_fallback_model",
     ):
         if key in payload.model_fields_set:
             value = getattr(payload, key)
@@ -139,6 +148,11 @@ async def put_device_config(device_id: str, payload: DeviceConfigUpdate) -> Devi
         config.pop("relay_api_key", None)
     elif "relay_api_key" in payload.model_fields_set and payload.relay_api_key:
         config["relay_api_key"] = payload.relay_api_key.strip()
+
+    if payload.clear_image_edit_fallback_api_key:
+        config.pop("image_edit_fallback_api_key", None)
+    elif "image_edit_fallback_api_key" in payload.model_fields_set and payload.image_edit_fallback_api_key:
+        config["image_edit_fallback_api_key"] = payload.image_edit_fallback_api_key.strip()
 
     updated = update_device_config(
         device_id,
@@ -171,5 +185,8 @@ def _to_response(device: dict[str, Any]) -> DeviceConfigResponse:
         relay_base_url=config.get("relay_base_url"),
         ai_model=config.get("ai_model"),
         image_edit_model=config.get("image_edit_model"),
+        image_edit_fallback_base_url=config.get("image_edit_fallback_base_url"),
+        image_edit_fallback_model=config.get("image_edit_fallback_model"),
         has_relay_api_key=bool(config.get("relay_api_key")),
+        has_image_edit_fallback_api_key=bool(config.get("image_edit_fallback_api_key")),
     )

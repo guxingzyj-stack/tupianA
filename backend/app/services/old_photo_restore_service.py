@@ -15,6 +15,7 @@ async def restore_old_photo(
     *,
     intent: str,
     option_name: str,
+    image_edit_providers: list[dict[str, str | None]] | None = None,
     relay_base_url: str | None = None,
     relay_api_key: str | None = None,
     image_edit_model: str | None = None,
@@ -24,6 +25,7 @@ async def restore_old_photo(
         output_path,
         intent,
         option_name,
+        image_edit_providers=image_edit_providers,
         relay_base_url=relay_base_url,
         relay_api_key=relay_api_key,
         image_edit_model=image_edit_model,
@@ -51,15 +53,21 @@ def _adapter_candidates(
     intent: str,
     option_name: str,
     *,
+    image_edit_providers: list[dict[str, str | None]] | None,
     relay_base_url: str | None,
     relay_api_key: str | None,
     image_edit_model: str | None,
 ):
-    qwen = QwenEditAdapter(
-        relay_base_url=relay_base_url,
-        relay_api_key=relay_api_key,
-        image_edit_model=image_edit_model,
-    )
+    providers = image_edit_providers
+    if providers is None:
+        providers = [
+            {
+                "relay_base_url": relay_base_url,
+                "relay_api_key": relay_api_key,
+                "image_edit_model": image_edit_model,
+                "processor": "image_edit",
+            }
+        ]
     gfpgan = GFPGANAdapter()
     esrgan = RealESRGANAdapter()
     candidates = []
@@ -86,14 +94,23 @@ def _adapter_candidates(
                 ),
             )
         )
-    candidates.append(
-        (
-            "qwen_edit",
-            lambda: qwen.restore(
-                input_path=input_path,
-                output_path=output_path,
-                instruction=intent,
-            ),
+    for provider in providers:
+        if not provider.get("relay_base_url") or not provider.get("relay_api_key"):
+            continue
+        qwen = QwenEditAdapter(
+            relay_base_url=provider.get("relay_base_url"),
+            relay_api_key=provider.get("relay_api_key"),
+            image_edit_model=provider.get("image_edit_model"),
         )
-    )
+        adapter_name = provider.get("processor") or "image_edit"
+        candidates.append(
+            (
+                str(adapter_name),
+                lambda qwen=qwen: qwen.restore(
+                    input_path=input_path,
+                    output_path=output_path,
+                    instruction=intent,
+                ),
+            )
+        )
     return candidates

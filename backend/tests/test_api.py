@@ -46,6 +46,8 @@ def _client(monkeypatch, tmp_path) -> TestClient:
     monkeypatch.setenv("APP_TOKEN", "test-token")
     monkeypatch.setenv("RELAY_BASE_URL", "")
     monkeypatch.setenv("RELAY_API_KEY", "")
+    monkeypatch.setenv("IMAGE_EDIT_FALLBACK_BASE_URL", "")
+    monkeypatch.setenv("IMAGE_EDIT_FALLBACK_API_KEY", "")
     get_settings.cache_clear()
     from app.main import create_app
 
@@ -149,6 +151,55 @@ def test_enhance_uses_remote_image_edit_when_configured(monkeypatch, tmp_path):
     assert job["metadata"]["enhance_processors"]["0"] == "image_edit"
 
 
+def test_enhance_uses_fallback_image_edit_when_primary_fails(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    headers = {"X-App-Token": "test-token"}
+    calls = []
+
+    async def fake_restore(self, input_path, output_path, instruction):
+        calls.append(self.relay_base_url)
+        if self.relay_base_url == "https://primary.example.com/v1":
+            from app.adapters.base import AdapterFailure
+
+            raise AdapterFailure("primary down")
+        Image.new("RGB", (64, 48), (40, 160, 120)).save(output_path, format="JPEG")
+        return output_path
+
+    monkeypatch.setattr("app.api.enhance.QwenEditAdapter.restore", fake_restore)
+    analyze = client.post(
+        "/api/analyze",
+        json={"device_id": "d1", "image": _image_b64()},
+        headers=headers,
+    )
+    assert analyze.status_code == 200
+
+    config = client.put(
+        "/api/devices/d1/config",
+        json={
+            "relay_base_url": "https://primary.example.com/v1",
+            "relay_api_key": "primary-key",
+            "image_edit_model": "gpt-image-2",
+            "image_edit_fallback_base_url": "https://fallback.example.com/v1",
+            "image_edit_fallback_api_key": "fallback-key",
+            "image_edit_fallback_model": "gpt-image-2",
+        },
+        headers=headers,
+    )
+    assert config.status_code == 200
+
+    enhance = client.post(
+        "/api/enhance",
+        json={"job_id": analyze.json()["job_id"], "option_index": 0},
+        headers=headers,
+    )
+    assert enhance.status_code == 200
+
+    job = get_job(analyze.json()["job_id"])
+    assert job is not None
+    assert calls == ["https://primary.example.com/v1", "https://fallback.example.com/v1"]
+    assert job["metadata"]["enhance_processors"]["0"] == "image_edit_fallback"
+
+
 def test_analyze_accepts_shot_paper_flag(monkeypatch, tmp_path):
     client = _client(monkeypatch, tmp_path)
     headers = {"X-App-Token": "test-token"}
@@ -232,6 +283,9 @@ def test_device_config_api_masks_relay_key(monkeypatch, tmp_path):
             "relay_api_key": "secret-key",
             "ai_model": "claude-sonnet-4-6",
             "image_edit_model": "gpt-image-1.5-all",
+            "image_edit_fallback_base_url": "https://fallback.example.com/v1",
+            "image_edit_fallback_api_key": "fallback-secret",
+            "image_edit_fallback_model": "gpt-image-2",
         },
         headers=headers,
     )
@@ -245,14 +299,20 @@ def test_device_config_api_masks_relay_key(monkeypatch, tmp_path):
     assert body["wechat_app_id"] == "wx123"
     assert body["wechat_universal_link"] == "https://example.com/wechat/"
     assert body["has_relay_api_key"] is True
+    assert body["image_edit_fallback_base_url"] == "https://fallback.example.com/v1"
+    assert body["image_edit_fallback_model"] == "gpt-image-2"
+    assert body["has_image_edit_fallback_api_key"] is True
     assert "secret-key" not in str(body)
+    assert "fallback-secret" not in str(body)
 
     read = client.get("/api/devices/d1/config", headers=headers)
     assert read.status_code == 200
     assert read.json()["has_relay_api_key"] is True
+    assert read.json()["has_image_edit_fallback_api_key"] is True
     assert read.json()["wechat_app_id"] == "wx123"
     assert read.json()["image_edit_model"] == "gpt-image-1.5-all"
     assert "relay_api_key" not in read.json()
+    assert "image_edit_fallback_api_key" not in read.json()
 
     partial = client.put(
         "/api/devices/d1/config",
@@ -268,7 +328,10 @@ def test_device_config_api_masks_relay_key(monkeypatch, tmp_path):
     assert partial_body["relay_base_url"] == "https://relay.example.com/v1"
     assert partial_body["ai_model"] == "claude-sonnet-4-6"
     assert partial_body["image_edit_model"] == "gpt-image-1.5-all"
+    assert partial_body["image_edit_fallback_base_url"] == "https://fallback.example.com/v1"
+    assert partial_body["image_edit_fallback_model"] == "gpt-image-2"
     assert partial_body["has_relay_api_key"] is True
+    assert partial_body["has_image_edit_fallback_api_key"] is True
 
 
 def test_device_usage_api_reports_budget_spend(monkeypatch, tmp_path):
