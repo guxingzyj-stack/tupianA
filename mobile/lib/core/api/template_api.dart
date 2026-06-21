@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image/image.dart' as img;
 
+import '../image/upload_image_optimizer.dart';
 import '../models/template_models.dart';
 import 'api_client.dart';
 
@@ -33,7 +32,7 @@ class TemplateApi {
     required int textIndex,
     required File imageFile,
   }) async {
-    final bytes = await _prepareImageBytes(imageFile);
+    final bytes = await prepareUploadImageBytes(imageFile);
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/template/apply',
       data: {
@@ -44,35 +43,5 @@ class TemplateApi {
       },
     );
     return TemplateApplyResult.fromJson(response.data ?? const {});
-  }
-
-  Future<List<int>> _prepareImageBytes(File file) async {
-    final original = await file.readAsBytes();
-    final decoded = img.decodeImage(original);
-    if (decoded == null) {
-      return original;
-    }
-
-    final longest = math.max(decoded.width, decoded.height);
-    if (original.length <= 2 * 1024 * 1024 && longest <= 2400) {
-      return original;
-    }
-
-    final resized = longest > 2400
-        ? img.copyResize(
-            decoded,
-            width: decoded.width >= decoded.height ? 2400 : null,
-            height: decoded.height > decoded.width ? 2400 : null,
-            interpolation: img.Interpolation.average,
-          )
-        : decoded;
-
-    var quality = 88;
-    var encoded = img.encodeJpg(resized, quality: quality);
-    while (encoded.length > 2 * 1024 * 1024 && quality > 58) {
-      quality -= 8;
-      encoded = img.encodeJpg(resized, quality: quality);
-    }
-    return encoded;
   }
 }
